@@ -100,13 +100,32 @@ let tickets_handler _req =
   |> Yojson.Safe.to_string
   |> Dream.json
 
+
+let read_file path =
+  let ic = open_in path in
+  let len = in_channel_length ic in
+  let content = really_input_string ic len in
+  close_in ic;
+  content
+
 (* Servidor web *)
+let static_handler = Dream.static "public"
 let () =
   Dream.run
   ~interface:"0.0.0.0"
   ~port:8080
   (Dream.logger
   @@ Dream.router [
+    (* API *)
     Dream.get "/api/tickets" tickets_handler;
+
+    (* Archivos estáticos del frontend *)
+    (* Dream.get "/" (fun _ -> Dream.respondfile "public/index.html"); *)
+    (* Dream.get "/" (fun _ -> Dream.redirect "/" "index.html") *)
+    (* Dream.get "/" (Dream.from_filesystem "public" "index.html") *)
+    Dream.get "/" (fun _ -> Dream.html (read_file "public/index.html"));
+
+    Dream.get "/elm.js" static_handler;
+    Dream.get "/index.html" static_handler;
   ])
 

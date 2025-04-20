@@ -1,2 +1,4 @@
 para compilar frontend
 elm make src/Main.elm --output=elm.js
+dune build
+dune exec ./bin/main.exe

@@ -4,7 +4,7 @@
   "description": "",
   "main": "elm.js",
   "scripts": {
-    "start": "http-server"
+    "start": "http-server frontend"
   },
   "keywords": [],
   "author": "",

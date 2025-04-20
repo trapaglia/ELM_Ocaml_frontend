@@ -112,6 +112,8 @@ getTickets : Cmd Msg
 getTickets =
     Http.get
         { url = "/api/tickets"
+
+        -- { url = "http://localhost:8081/api/tickets"
         , expect = Http.expectJson TicketsFetched (Decode.list ticketDecoder)
         }
 
