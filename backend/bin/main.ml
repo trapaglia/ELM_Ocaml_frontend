@@ -56,7 +56,7 @@ let get_tickets () : ticket list =
 
   let sql =
     "SELECT ticket_name, estado, compra1, compra2, venta1, venta2, \
-     take_profit, sto_loss, punta_compra, punta_venta, last_update \
+     take_profit, stop_loss, punta_compra, punta_venta, last_update \
      FROM tickets"
   in
 
