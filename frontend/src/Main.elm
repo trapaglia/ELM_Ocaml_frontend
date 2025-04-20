@@ -32,7 +32,22 @@ type alias Ticket =
 
 ticketDecoder : Decoder Ticket
 ticketDecoder =
-    Decode.map8 Ticket
+    Decode.map8
+        (\ticketName estado compra1 compra2 venta1 venta2 takeProfit stoLoss ->
+            \puntaCompra puntaVenta lastUpdate ->
+                Ticket
+                    ticketName
+                    estado
+                    compra1
+                    compra2
+                    venta1
+                    venta2
+                    takeProfit
+                    stoLoss
+                    puntaCompra
+                    puntaVenta
+                    lastUpdate
+        )
         (Decode.field "ticket_name" Decode.string)
         (Decode.field "estado" Decode.string)
         (Decode.field "compra1" Decode.float)
@@ -42,11 +57,8 @@ ticketDecoder =
         (Decode.field "take_profit" Decode.float)
         (Decode.field "sto_loss" Decode.float)
         |> Decode.andThen
-            (\partialValue ->
-                Decode.map3
-                    (\puntaCompra puntaVenta lastUpdate ->
-                        finalConstructor partialValue puntaCompra puntaVenta lastUpdate
-                    )
+            (\buildPartial ->
+                Decode.map3 buildPartial
                     (Decode.field "punta_compra" Decode.float)
                     (Decode.field "punta_venta" Decode.float)
                     (Decode.field "last_update" Decode.string)
