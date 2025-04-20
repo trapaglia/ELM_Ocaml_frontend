@@ -1,0 +1,2 @@
+para compilar frontend
+elm make src/Main.elm --output=elm.js
