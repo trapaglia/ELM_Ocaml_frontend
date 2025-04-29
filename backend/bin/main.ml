@@ -119,24 +119,49 @@ let update_ticket ticket =
   | Sqlite3.Rc.DONE -> true
   | _ -> false
 
-(* Deserializar un ticket desde JSON *)
+(* Deserializar un ticket desde JSON, manejando tanto valores float como int *)
 let ticket_from_json json =
   try
     let open Yojson.Safe.Util in
+    
+    (* Función auxiliar para convertir tanto int como float a float *)
+    let to_float_robust v =
+      try to_float v
+      with Type_error _ -> 
+        try float_of_int (to_int v)
+        with e -> 
+          Dream.log "Error al convertir a float: %s" (Printexc.to_string e);
+          raise e
+    in
+    
+    let ticket_name = try json |> member "ticket_name" |> to_string with e -> Dream.log "Error en ticket_name: %s" (Printexc.to_string e); raise e in
+    let estado = try json |> member "estado" |> to_string with e -> Dream.log "Error en estado: %s" (Printexc.to_string e); raise e in
+    let compra1 = try json |> member "compra1" |> to_float_robust with e -> Dream.log "Error en compra1: %s" (Printexc.to_string e); raise e in
+    let compra2 = try json |> member "compra2" |> to_float_robust with e -> Dream.log "Error en compra2: %s" (Printexc.to_string e); raise e in
+    let venta1 = try json |> member "venta1" |> to_float_robust with e -> Dream.log "Error en venta1: %s" (Printexc.to_string e); raise e in
+    let venta2 = try json |> member "venta2" |> to_float_robust with e -> Dream.log "Error en venta2: %s" (Printexc.to_string e); raise e in
+    let take_profit = try json |> member "take_profit" |> to_float_robust with e -> Dream.log "Error en take_profit: %s" (Printexc.to_string e); raise e in
+    let stop_loss = try json |> member "stop_loss" |> to_float_robust with e -> Dream.log "Error en stop_loss: %s" (Printexc.to_string e); raise e in
+    let punta_compra = try json |> member "punta_compra" |> to_float_robust with e -> Dream.log "Error en punta_compra: %s" (Printexc.to_string e); raise e in
+    let punta_venta = try json |> member "punta_venta" |> to_float_robust with e -> Dream.log "Error en punta_venta: %s" (Printexc.to_string e); raise e in
+    let last_update = try json |> member "last_update" |> to_string with e -> Dream.log "Error en last_update: %s" (Printexc.to_string e); raise e in
+
+    Dream.log "Todos los campos extraídos correctamente";
     {
-      ticket_name = json |> member "ticket_name" |> to_string;
-      estado = json |> member "estado" |> to_string;
-      compra1 = json |> member "compra1" |> to_float;
-      compra2 = json |> member "compra2" |> to_float;
-      venta1 = json |> member "venta1" |> to_float;
-      venta2 = json |> member "venta2" |> to_float;
-      take_profit = json |> member "take_profit" |> to_float;
-      stop_loss = json |> member "stop_loss" |> to_float;
-      punta_compra = json |> member "punta_compra" |> to_float;
-      punta_venta = json |> member "punta_venta" |> to_float;
-      last_update = json |> member "last_update" |> to_string;
+      ticket_name;
+      estado;
+      compra1;
+      compra2;
+      venta1;
+      venta2;
+      take_profit;
+      stop_loss;
+      punta_compra;
+      punta_venta;
+      last_update;
     }
-  with _ -> 
+  with e -> 
+    Dream.log "Error completo en deserialización: %s" (Printexc.to_string e);
     failwith "Invalid JSON format for ticket"
 
 (* Handler que responde con JSON *)
@@ -152,15 +177,19 @@ let tickets_handler _req =
 let update_ticket_handler req =
   let open Lwt.Syntax in
   let* body = Dream.body req in
+  Dream.log "Contenido del cuerpo recibido: %s" body;
   try
     let json = Yojson.Safe.from_string body in
+    Dream.log "JSON parseado correctamente";
     let ticket = ticket_from_json json in
+    Dream.log "Ticket deserializado: %s" ticket.ticket_name;
     let success = update_ticket ticket in
     if success then
       Dream.json "{\"status\": \"success\", \"message\": \"Ticket actualizado correctamente\"}"
     else
       Dream.json ~status:`Internal_Server_Error "{\"status\": \"error\", \"message\": \"Error al actualizar el ticket\"}"
   with e ->
+    Dream.log "Error al procesar la solicitud: %s" (Printexc.to_string e);
     Dream.json ~status:`Bad_Request (Printf.sprintf "{\"status\": \"error\", \"message\": \"Error en el formato: %s\"}" 
                              (Printexc.to_string e))
 
