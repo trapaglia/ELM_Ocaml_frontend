@@ -6132,11 +6132,11 @@ var $author$project$Main$Ticket = function (ticketName) {
 				return function (venta1) {
 					return function (venta2) {
 						return function (takeProfit) {
-							return function (stoLoss) {
+							return function (stopLoss) {
 								return function (puntaCompra) {
 									return function (puntaVenta) {
 										return function (lastUpdate) {
-											return {compra1: compra1, compra2: compra2, estado: estado, lastUpdate: lastUpdate, puntaCompra: puntaCompra, puntaVenta: puntaVenta, stoLoss: stoLoss, takeProfit: takeProfit, ticketName: ticketName, venta1: venta1, venta2: venta2};
+											return {compra1: compra1, compra2: compra2, estado: estado, lastUpdate: lastUpdate, puntaCompra: puntaCompra, puntaVenta: puntaVenta, stopLoss: stopLoss, takeProfit: takeProfit, ticketName: ticketName, venta1: venta1, venta2: venta2};
 										};
 									};
 								};
@@ -6167,10 +6167,10 @@ var $author$project$Main$ticketDecoder = A2(
 	A9(
 		$elm$json$Json$Decode$map8,
 		F8(
-			function (ticketName, estado, compra1, compra2, venta1, venta2, takeProfit, stoLoss) {
+			function (ticketName, estado, compra1, compra2, venta1, venta2, takeProfit, stopLoss) {
 				return F3(
 					function (puntaCompra, puntaVenta, lastUpdate) {
-						return $author$project$Main$Ticket(ticketName)(estado)(compra1)(compra2)(venta1)(venta2)(takeProfit)(stoLoss)(puntaCompra)(puntaVenta)(lastUpdate);
+						return $author$project$Main$Ticket(ticketName)(estado)(compra1)(compra2)(venta1)(venta2)(takeProfit)(stopLoss)(puntaCompra)(puntaVenta)(lastUpdate);
 					});
 			}),
 		A2($elm$json$Json$Decode$field, 'ticket_name', $elm$json$Json$Decode$string),
@@ -6180,7 +6180,7 @@ var $author$project$Main$ticketDecoder = A2(
 		A2($elm$json$Json$Decode$field, 'venta1', $elm$json$Json$Decode$float),
 		A2($elm$json$Json$Decode$field, 'venta2', $elm$json$Json$Decode$float),
 		A2($elm$json$Json$Decode$field, 'take_profit', $elm$json$Json$Decode$float),
-		A2($elm$json$Json$Decode$field, 'sto_loss', $elm$json$Json$Decode$float)));
+		A2($elm$json$Json$Decode$field, 'stop_loss', $elm$json$Json$Decode$float)));
 var $author$project$Main$getTickets = $elm$http$Http$get(
 	{
 		expect: A2(
@@ -6191,7 +6191,7 @@ var $author$project$Main$getTickets = $elm$http$Http$get(
 	});
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
-		{error: $elm$core$Maybe$Nothing, tickets: _List_Nil},
+		{editingTicket: $elm$core$Maybe$Nothing, error: $elm$core$Maybe$Nothing, success: $elm$core$Maybe$Nothing, tickets: _List_Nil},
 		$author$project$Main$getTickets);
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -6215,62 +6215,798 @@ var $author$project$Main$debugErr = function (err) {
 };
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$core$String$toFloat = _String_toFloat;
+var $author$project$Main$SaveTicketResult = function (a) {
+	return {$: 'SaveTicketResult', a: a};
+};
+var $elm$json$Json$Encode$float = _Json_wrap;
+var $elm$json$Json$Encode$object = function (pairs) {
+	return _Json_wrap(
+		A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v0, obj) {
+					var k = _v0.a;
+					var v = _v0.b;
+					return A3(_Json_addField, k, v, obj);
+				}),
+			_Json_emptyObject(_Utils_Tuple0),
+			pairs));
+};
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $author$project$Main$encodeTicket = function (ticket) {
+	return $elm$json$Json$Encode$object(
+		_List_fromArray(
+			[
+				_Utils_Tuple2(
+				'ticket_name',
+				$elm$json$Json$Encode$string(ticket.ticketName)),
+				_Utils_Tuple2(
+				'estado',
+				$elm$json$Json$Encode$string(ticket.estado)),
+				_Utils_Tuple2(
+				'compra1',
+				$elm$json$Json$Encode$float(ticket.compra1)),
+				_Utils_Tuple2(
+				'compra2',
+				$elm$json$Json$Encode$float(ticket.compra2)),
+				_Utils_Tuple2(
+				'venta1',
+				$elm$json$Json$Encode$float(ticket.venta1)),
+				_Utils_Tuple2(
+				'venta2',
+				$elm$json$Json$Encode$float(ticket.venta2)),
+				_Utils_Tuple2(
+				'take_profit',
+				$elm$json$Json$Encode$float(ticket.takeProfit)),
+				_Utils_Tuple2(
+				'stop_loss',
+				$elm$json$Json$Encode$float(ticket.stopLoss)),
+				_Utils_Tuple2(
+				'punta_compra',
+				$elm$json$Json$Encode$float(ticket.puntaCompra)),
+				_Utils_Tuple2(
+				'punta_venta',
+				$elm$json$Json$Encode$float(ticket.puntaVenta)),
+				_Utils_Tuple2(
+				'last_update',
+				$elm$json$Json$Encode$string(ticket.lastUpdate))
+			]));
+};
+var $elm$http$Http$expectString = function (toMsg) {
+	return A2(
+		$elm$http$Http$expectStringResponse,
+		toMsg,
+		$elm$http$Http$resolve($elm$core$Result$Ok));
+};
+var $elm$http$Http$jsonBody = function (value) {
+	return A2(
+		_Http_pair,
+		'application/json',
+		A2($elm$json$Json$Encode$encode, 0, value));
+};
+var $author$project$Main$updateTicket = function (ticket) {
+	return $elm$http$Http$request(
+		{
+			body: $elm$http$Http$jsonBody(
+				$author$project$Main$encodeTicket(ticket)),
+			expect: $elm$http$Http$expectString($author$project$Main$SaveTicketResult),
+			headers: _List_Nil,
+			method: 'PUT',
+			timeout: $elm$core$Maybe$Nothing,
+			tracker: $elm$core$Maybe$Nothing,
+			url: '/api/tickets'
+		});
+};
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		if (msg.a.$ === 'Ok') {
-			var tickets = msg.a.a;
-			return _Utils_Tuple2(
-				_Utils_update(
-					model,
-					{tickets: tickets}),
-				$elm$core$Platform$Cmd$none);
-		} else {
-			var err = msg.a.a;
-			return _Utils_Tuple2(
-				_Utils_update(
-					model,
-					{
-						error: $elm$core$Maybe$Just(
-							$author$project$Main$debugErr(err))
-					}),
-				$elm$core$Platform$Cmd$none);
+		switch (msg.$) {
+			case 'TicketsFetched':
+				if (msg.a.$ === 'Ok') {
+					var tickets = msg.a.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{error: $elm$core$Maybe$Nothing, tickets: tickets}),
+						$elm$core$Platform$Cmd$none);
+				} else {
+					var err = msg.a.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								error: $elm$core$Maybe$Just(
+									$author$project$Main$debugErr(err))
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
+			case 'StartEditing':
+				var ticket = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							editingTicket: $elm$core$Maybe$Just(ticket),
+							error: $elm$core$Maybe$Nothing,
+							success: $elm$core$Maybe$Nothing
+						}),
+					$elm$core$Platform$Cmd$none);
+			case 'CancelEditing':
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{editingTicket: $elm$core$Maybe$Nothing}),
+					$elm$core$Platform$Cmd$none);
+			case 'UpdateField':
+				var field = msg.a;
+				var value = msg.b;
+				var _v1 = model.editingTicket;
+				if (_v1.$ === 'Just') {
+					var ticket = _v1.a;
+					var updatedTicket = function () {
+						switch (field) {
+							case 'ticketName':
+								return _Utils_update(
+									ticket,
+									{ticketName: value});
+							case 'estado':
+								return _Utils_update(
+									ticket,
+									{estado: value});
+							case 'lastUpdate':
+								return _Utils_update(
+									ticket,
+									{lastUpdate: value});
+							default:
+								return ticket;
+						}
+					}();
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								editingTicket: $elm$core$Maybe$Just(updatedTicket)
+							}),
+						$elm$core$Platform$Cmd$none);
+				} else {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				}
+			case 'UpdateFloatField':
+				var field = msg.a;
+				var value = msg.b;
+				var _v3 = model.editingTicket;
+				if (_v3.$ === 'Just') {
+					var ticket = _v3.a;
+					var floatValue = A2(
+						$elm$core$Maybe$withDefault,
+						0.0,
+						$elm$core$String$toFloat(value));
+					var updatedTicket = function () {
+						switch (field) {
+							case 'compra1':
+								return _Utils_update(
+									ticket,
+									{compra1: floatValue});
+							case 'compra2':
+								return _Utils_update(
+									ticket,
+									{compra2: floatValue});
+							case 'venta1':
+								return _Utils_update(
+									ticket,
+									{venta1: floatValue});
+							case 'venta2':
+								return _Utils_update(
+									ticket,
+									{venta2: floatValue});
+							case 'takeProfit':
+								return _Utils_update(
+									ticket,
+									{takeProfit: floatValue});
+							case 'stopLoss':
+								return _Utils_update(
+									ticket,
+									{stopLoss: floatValue});
+							case 'puntaCompra':
+								return _Utils_update(
+									ticket,
+									{puntaCompra: floatValue});
+							case 'puntaVenta':
+								return _Utils_update(
+									ticket,
+									{puntaVenta: floatValue});
+							default:
+								return ticket;
+						}
+					}();
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								editingTicket: $elm$core$Maybe$Just(updatedTicket)
+							}),
+						$elm$core$Platform$Cmd$none);
+				} else {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				}
+			case 'SaveTicket':
+				var _v5 = model.editingTicket;
+				if (_v5.$ === 'Just') {
+					var ticket = _v5.a;
+					return _Utils_Tuple2(
+						model,
+						$author$project$Main$updateTicket(ticket));
+				} else {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				}
+			default:
+				if (msg.a.$ === 'Ok') {
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								editingTicket: $elm$core$Maybe$Nothing,
+								success: $elm$core$Maybe$Just('Ticket actualizado correctamente')
+							}),
+						$author$project$Main$getTickets);
+				} else {
+					var err = msg.a.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								error: $elm$core$Maybe$Just(
+									'Error al guardar: ' + $author$project$Main$debugErr(err))
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
 		}
 	});
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$h2 = _VirtualDom_node('h2');
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
-var $elm$html$Html$table = _VirtualDom_node('table');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $author$project$Main$CancelEditing = {$: 'CancelEditing'};
+var $author$project$Main$SaveTicket = {$: 'SaveTicket'};
+var $author$project$Main$UpdateField = F2(
+	function (a, b) {
+		return {$: 'UpdateField', a: a, b: b};
+	});
+var $author$project$Main$UpdateFloatField = F2(
+	function (a, b) {
+		return {$: 'UpdateFloatField', a: a, b: b};
+	});
+var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$core$String$fromFloat = _String_fromNumber;
+var $elm$html$Html$h3 = _VirtualDom_node('h3');
+var $elm$html$Html$input = _VirtualDom_node('input');
+var $elm$html$Html$label = _VirtualDom_node('label');
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $elm$html$Html$Events$alwaysStop = function (x) {
+	return _Utils_Tuple2(x, true);
+};
+var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
+	return {$: 'MayStopPropagation', a: a};
+};
+var $elm$html$Html$Events$stopPropagationOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
+	});
+var $elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
+	});
+var $elm$html$Html$Events$targetValue = A2(
+	$elm$json$Json$Decode$at,
+	_List_fromArray(
+		['target', 'value']),
+	$elm$json$Json$Decode$string);
+var $elm$html$Html$Events$onInput = function (tagger) {
+	return A2(
+		$elm$html$Html$Events$stopPropagationOn,
+		'input',
+		A2(
+			$elm$json$Json$Decode$map,
+			$elm$html$Html$Events$alwaysStop,
+			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
+};
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
+	});
+var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
+var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $author$project$Main$viewEditForm = function (ticket) {
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd'),
+				A2($elm$html$Html$Attributes$style, 'padding', '20px'),
+				A2($elm$html$Html$Attributes$style, 'border-radius', '5px')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$h3,
+				_List_Nil,
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Editar Ticket: ' + ticket.ticketName)
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'display', 'block'),
+								A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Estado:')
+							])),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$type_('text'),
+								$elm$html$Html$Attributes$value(ticket.estado),
+								$elm$html$Html$Events$onInput(
+								$author$project$Main$UpdateField('estado')),
+								A2($elm$html$Html$Attributes$style, 'width', '100%'),
+								A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+								A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+							]),
+						_List_Nil)
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '15px'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Compra 1:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.compra1)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateFloatField('compra1')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Compra 2:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.compra2)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateFloatField('compra2')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '15px'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Venta 1:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.venta1)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateFloatField('venta1')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Venta 2:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.venta2)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateFloatField('venta2')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '15px'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Take Profit:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.takeProfit)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateFloatField('takeProfit')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Stop Loss:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.stopLoss)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateFloatField('stopLoss')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '15px'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Punta Compra:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.puntaCompra)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateFloatField('puntaCompra')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Punta Venta:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.puntaVenta)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateFloatField('puntaVenta')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '10px'),
+						A2($elm$html$Html$Attributes$style, 'margin-top', '20px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Events$onClick($author$project$Main$SaveTicket),
+								A2($elm$html$Html$Attributes$style, 'background-color', '#4CAF50'),
+								A2($elm$html$Html$Attributes$style, 'color', 'white'),
+								A2($elm$html$Html$Attributes$style, 'padding', '10px 15px'),
+								A2($elm$html$Html$Attributes$style, 'border', 'none'),
+								A2($elm$html$Html$Attributes$style, 'border-radius', '4px'),
+								A2($elm$html$Html$Attributes$style, 'cursor', 'pointer')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Guardar')
+							])),
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Events$onClick($author$project$Main$CancelEditing),
+								A2($elm$html$Html$Attributes$style, 'background-color', '#f44336'),
+								A2($elm$html$Html$Attributes$style, 'color', 'white'),
+								A2($elm$html$Html$Attributes$style, 'padding', '10px 15px'),
+								A2($elm$html$Html$Attributes$style, 'border', 'none'),
+								A2($elm$html$Html$Attributes$style, 'border-radius', '4px'),
+								A2($elm$html$Html$Attributes$style, 'cursor', 'pointer')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Cancelar')
+							]))
+					]))
+			]));
+};
+var $elm$html$Html$table = _VirtualDom_node('table');
 var $elm$html$Html$th = _VirtualDom_node('th');
 var $elm$html$Html$thead = _VirtualDom_node('thead');
 var $elm$html$Html$tr = _VirtualDom_node('tr');
-var $elm$core$String$fromFloat = _String_fromNumber;
+var $author$project$Main$StartEditing = function (a) {
+	return {$: 'StartEditing', a: a};
+};
 var $elm$html$Html$td = _VirtualDom_node('td');
 var $author$project$Main$viewRow = function (t) {
 	return A2(
 		$elm$html$Html$tr,
-		_List_Nil,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+			]),
 		_List_fromArray(
 			[
 				A2(
 				$elm$html$Html$td,
-				_List_Nil,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+						A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+					]),
 				_List_fromArray(
 					[
 						$elm$html$Html$text(t.ticketName)
 					])),
 				A2(
 				$elm$html$Html$td,
-				_List_Nil,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+						A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+					]),
 				_List_fromArray(
 					[
 						$elm$html$Html$text(t.estado)
 					])),
 				A2(
 				$elm$html$Html$td,
-				_List_Nil,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+						A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+					]),
 				_List_fromArray(
 					[
 						$elm$html$Html$text(
@@ -6278,7 +7014,11 @@ var $author$project$Main$viewRow = function (t) {
 					])),
 				A2(
 				$elm$html$Html$td,
-				_List_Nil,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+						A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+					]),
 				_List_fromArray(
 					[
 						$elm$html$Html$text(
@@ -6286,11 +7026,197 @@ var $author$project$Main$viewRow = function (t) {
 					])),
 				A2(
 				$elm$html$Html$td,
-				_List_Nil,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+						A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+					]),
 				_List_fromArray(
 					[
 						$elm$html$Html$text(t.lastUpdate)
+					])),
+				A2(
+				$elm$html$Html$td,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+						A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Events$onClick(
+								$author$project$Main$StartEditing(t)),
+								A2($elm$html$Html$Attributes$style, 'background-color', '#4CAF50'),
+								A2($elm$html$Html$Attributes$style, 'color', 'white'),
+								A2($elm$html$Html$Attributes$style, 'padding', '6px 10px'),
+								A2($elm$html$Html$Attributes$style, 'border', 'none'),
+								A2($elm$html$Html$Attributes$style, 'cursor', 'pointer')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Editar')
+							]))
 					]))
+			]));
+};
+var $author$project$Main$viewTicketsTable = function (model) {
+	return A2(
+		$elm$html$Html$table,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'border-collapse', 'collapse'),
+				A2($elm$html$Html$Attributes$style, 'width', '100%')
+			]),
+		_Utils_ap(
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$thead,
+					_List_Nil,
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$tr,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'background-color', '#f2f2f2')
+								]),
+							_List_fromArray(
+								[
+									A2(
+									$elm$html$Html$th,
+									_List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+											A2($elm$html$Html$Attributes$style, 'text-align', 'left'),
+											A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Ticket')
+										])),
+									A2(
+									$elm$html$Html$th,
+									_List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+											A2($elm$html$Html$Attributes$style, 'text-align', 'left'),
+											A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Estado')
+										])),
+									A2(
+									$elm$html$Html$th,
+									_List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+											A2($elm$html$Html$Attributes$style, 'text-align', 'left'),
+											A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Compra1')
+										])),
+									A2(
+									$elm$html$Html$th,
+									_List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+											A2($elm$html$Html$Attributes$style, 'text-align', 'left'),
+											A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Venta1')
+										])),
+									A2(
+									$elm$html$Html$th,
+									_List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+											A2($elm$html$Html$Attributes$style, 'text-align', 'left'),
+											A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Last Update')
+										])),
+									A2(
+									$elm$html$Html$th,
+									_List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+											A2($elm$html$Html$Attributes$style, 'text-align', 'left'),
+											A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Acciones')
+										]))
+								]))
+						]))
+				]),
+			A2($elm$core$List$map, $author$project$Main$viewRow, model.tickets)));
+};
+var $author$project$Main$viewContent = function (model) {
+	var _v0 = model.editingTicket;
+	if (_v0.$ === 'Just') {
+		var ticket = _v0.a;
+		return $author$project$Main$viewEditForm(ticket);
+	} else {
+		return $author$project$Main$viewTicketsTable(model);
+	}
+};
+var $author$project$Main$viewMessages = function (model) {
+	return A2(
+		$elm$html$Html$div,
+		_List_Nil,
+		_List_fromArray(
+			[
+				function () {
+				var _v0 = model.error;
+				if (_v0.$ === 'Just') {
+					var errMsg = _v0.a;
+					return A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'color', 'red'),
+								A2($elm$html$Html$Attributes$style, 'margin-bottom', '1rem')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Error: ' + errMsg)
+							]));
+				} else {
+					return $elm$html$Html$text('');
+				}
+			}(),
+				function () {
+				var _v1 = model.success;
+				if (_v1.$ === 'Just') {
+					var successMsg = _v1.a;
+					return A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'color', 'green'),
+								A2($elm$html$Html$Attributes$style, 'margin-bottom', '1rem')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(successMsg)
+							]));
+				} else {
+					return $elm$html$Html$text('');
+				}
+			}()
 			]));
 };
 var $author$project$Main$view = function (model) {
@@ -6310,81 +7236,8 @@ var $author$project$Main$view = function (model) {
 					[
 						$elm$html$Html$text('📋 Tickets actuales')
 					])),
-				function () {
-				var _v0 = model.error;
-				if (_v0.$ === 'Just') {
-					var errMsg = _v0.a;
-					return A2(
-						$elm$html$Html$div,
-						_List_fromArray(
-							[
-								A2($elm$html$Html$Attributes$style, 'color', 'red')
-							]),
-						_List_fromArray(
-							[
-								$elm$html$Html$text('Error: ' + errMsg)
-							]));
-				} else {
-					return A2(
-						$elm$html$Html$table,
-						_List_fromArray(
-							[
-								A2($elm$html$Html$Attributes$style, 'border', '1px solid black')
-							]),
-						_Utils_ap(
-							_List_fromArray(
-								[
-									A2(
-									$elm$html$Html$thead,
-									_List_Nil,
-									_List_fromArray(
-										[
-											A2(
-											$elm$html$Html$tr,
-											_List_Nil,
-											_List_fromArray(
-												[
-													A2(
-													$elm$html$Html$th,
-													_List_Nil,
-													_List_fromArray(
-														[
-															$elm$html$Html$text('Ticket')
-														])),
-													A2(
-													$elm$html$Html$th,
-													_List_Nil,
-													_List_fromArray(
-														[
-															$elm$html$Html$text('Estado')
-														])),
-													A2(
-													$elm$html$Html$th,
-													_List_Nil,
-													_List_fromArray(
-														[
-															$elm$html$Html$text('Compra1')
-														])),
-													A2(
-													$elm$html$Html$th,
-													_List_Nil,
-													_List_fromArray(
-														[
-															$elm$html$Html$text('Venta1')
-														])),
-													A2(
-													$elm$html$Html$th,
-													_List_Nil,
-													_List_fromArray(
-														[
-															$elm$html$Html$text('Last Update')
-														]))
-												]))
-										]))
-								]),
-							A2($elm$core$List$map, $author$project$Main$viewRow, model.tickets)));
-				}
-			}()
+				$author$project$Main$viewMessages(model),
+				$author$project$Main$viewContent(model)
 			]));
 };
 var $author$project$Main$main = $elm$browser$Browser$element(

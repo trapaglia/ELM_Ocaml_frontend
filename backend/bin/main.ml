@@ -12,7 +12,7 @@ type ticket = {
   venta1 : float;
   venta2 : float;
   take_profit : float;
-  sto_loss : float;
+  stop_loss : float;
   punta_compra : float;
   punta_venta : float;
   last_update : string;
@@ -28,7 +28,7 @@ let ticket_to_yojson t =
     ("venta1", `Float t.venta1);
     ("venta2", `Float t.venta2);
     ("take_profit", `Float t.take_profit);
-    ("sto_loss", `Float t.sto_loss);
+    ("stop_loss", `Float t.stop_loss);
     ("punta_compra", `Float t.punta_compra);
     ("punta_venta", `Float t.punta_venta);
     ("last_update", `String t.last_update)
@@ -74,7 +74,7 @@ let get_tickets () : ticket list =
           venta1 = column_to_float (Sqlite3.column stmt 4);
           venta2 = column_to_float (Sqlite3.column stmt 5);
           take_profit = column_to_float (Sqlite3.column stmt 6);
-          sto_loss = column_to_float (Sqlite3.column stmt 7);
+          stop_loss = column_to_float (Sqlite3.column stmt 7);
           punta_compra = column_to_float (Sqlite3.column stmt 8);
           punta_venta = column_to_float (Sqlite3.column stmt 9);
           last_update = column_to_string (Sqlite3.column stmt 10);
@@ -90,6 +90,54 @@ let get_tickets () : ticket list =
   ignore (Sqlite3.db_close db);
   List.rev !tickets
 
+(* Actualizar un ticket en la base de datos *)
+let update_ticket ticket =
+  let db = Sqlite3.db_open "iol.db" in
+  let sql =
+    "UPDATE tickets SET estado = ?, compra1 = ?, compra2 = ?, venta1 = ?, venta2 = ?, \
+     take_profit = ?, stop_loss = ?, punta_compra = ?, punta_venta = ?, last_update = ? \
+     WHERE ticket_name = ?"
+  in
+  
+  let stmt = Sqlite3.prepare db sql in
+  ignore (Sqlite3.bind stmt 1 (Sqlite3.Data.TEXT ticket.estado));
+  ignore (Sqlite3.bind stmt 2 (Sqlite3.Data.FLOAT ticket.compra1));
+  ignore (Sqlite3.bind stmt 3 (Sqlite3.Data.FLOAT ticket.compra2));
+  ignore (Sqlite3.bind stmt 4 (Sqlite3.Data.FLOAT ticket.venta1));
+  ignore (Sqlite3.bind stmt 5 (Sqlite3.Data.FLOAT ticket.venta2));
+  ignore (Sqlite3.bind stmt 6 (Sqlite3.Data.FLOAT ticket.take_profit));
+  ignore (Sqlite3.bind stmt 7 (Sqlite3.Data.FLOAT ticket.stop_loss));
+  ignore (Sqlite3.bind stmt 8 (Sqlite3.Data.FLOAT ticket.punta_compra));
+  ignore (Sqlite3.bind stmt 9 (Sqlite3.Data.FLOAT ticket.punta_venta));
+  ignore (Sqlite3.bind stmt 10 (Sqlite3.Data.TEXT ticket.last_update));
+  ignore (Sqlite3.bind stmt 11 (Sqlite3.Data.TEXT ticket.ticket_name));
+  
+  let result = Sqlite3.step stmt in
+  ignore (Sqlite3.finalize stmt);
+  ignore (Sqlite3.db_close db);
+  match result with
+  | Sqlite3.Rc.DONE -> true
+  | _ -> false
+
+(* Deserializar un ticket desde JSON *)
+let ticket_from_json json =
+  try
+    let open Yojson.Safe.Util in
+    {
+      ticket_name = json |> member "ticket_name" |> to_string;
+      estado = json |> member "estado" |> to_string;
+      compra1 = json |> member "compra1" |> to_float;
+      compra2 = json |> member "compra2" |> to_float;
+      venta1 = json |> member "venta1" |> to_float;
+      venta2 = json |> member "venta2" |> to_float;
+      take_profit = json |> member "take_profit" |> to_float;
+      stop_loss = json |> member "stop_loss" |> to_float;
+      punta_compra = json |> member "punta_compra" |> to_float;
+      punta_venta = json |> member "punta_venta" |> to_float;
+      last_update = json |> member "last_update" |> to_string;
+    }
+  with _ -> 
+    failwith "Invalid JSON format for ticket"
 
 (* Handler que responde con JSON *)
 let tickets_handler _req =
@@ -100,7 +148,23 @@ let tickets_handler _req =
   |> Yojson.Safe.to_string
   |> Dream.json
 
+(* Handler para actualizar un ticket *)
+let update_ticket_handler req =
+  let open Lwt.Syntax in
+  let* body = Dream.body req in
+  try
+    let json = Yojson.Safe.from_string body in
+    let ticket = ticket_from_json json in
+    let success = update_ticket ticket in
+    if success then
+      Dream.json "{\"status\": \"success\", \"message\": \"Ticket actualizado correctamente\"}"
+    else
+      Dream.json ~status:`Internal_Server_Error "{\"status\": \"error\", \"message\": \"Error al actualizar el ticket\"}"
+  with e ->
+    Dream.json ~status:`Bad_Request (Printf.sprintf "{\"status\": \"error\", \"message\": \"Error en el formato: %s\"}" 
+                             (Printexc.to_string e))
 
+(* Leer un archivo *)
 let read_file path =
   let ic = open_in path in
   let len = in_channel_length ic in
@@ -118,14 +182,11 @@ let () =
   @@ Dream.router [
     (* API *)
     Dream.get "/api/tickets" tickets_handler;
+    Dream.put "/api/tickets" update_ticket_handler;
 
     (* Archivos estáticos del frontend *)
-    (* Dream.get "/" (fun _ -> Dream.respondfile "public/index.html"); *)
-    (* Dream.get "/" (fun _ -> Dream.redirect "/" "index.html") *)
-    (* Dream.get "/" (Dream.from_filesystem "public" "index.html") *)
     Dream.get "/" (fun _ -> Dream.html (read_file "public/index.html"));
 
     Dream.get "/elm.js" static_handler;
     Dream.get "/index.html" static_handler;
   ])
-

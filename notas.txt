@@ -5,3 +5,6 @@ dune exec ./bin/main.exe
 
 sqlite3 iol.db
 PRAGMA table_info(tickets);
+
+cd /home/brahman/proyectos/ELM_frontend && cd frontend && elm make src/Main.elm --output=../backend/public/elm.js
+cd /home/brahman/proyectos/ELM_frontend/backend && dune exec bin/main.exe
