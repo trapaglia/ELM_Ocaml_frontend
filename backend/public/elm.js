@@ -6191,33 +6191,20 @@ var $author$project$Main$getTickets = $elm$http$Http$get(
 	});
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
-		{editingTicket: $elm$core$Maybe$Nothing, error: $elm$core$Maybe$Nothing, success: $elm$core$Maybe$Nothing, tickets: _List_Nil},
+		{
+			creatingTicket: false,
+			editingTicket: $elm$core$Maybe$Nothing,
+			error: $elm$core$Maybe$Nothing,
+			newTicket: {compra1: 0.0, compra2: 0.0, estado: 'Nuevo', lastUpdate: '', puntaCompra: 0.0, puntaVenta: 0.0, stopLoss: 0.0, takeProfit: 0.0, ticketName: '', venta1: 0.0, venta2: 0.0},
+			success: $elm$core$Maybe$Nothing,
+			tickets: _List_Nil
+		},
 		$author$project$Main$getTickets);
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $author$project$Main$debugErr = function (err) {
-	switch (err.$) {
-		case 'BadUrl':
-			var url = err.a;
-			return 'Bad URL: ' + url;
-		case 'Timeout':
-			return 'Request timed out';
-		case 'NetworkError':
-			return 'Network error';
-		case 'BadStatus':
-			var status = err.a;
-			return 'Bad status: ' + $elm$core$String$fromInt(status);
-		default:
-			var body = err.a;
-			return 'Bad body: ' + body;
-	}
-};
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $elm$core$String$toFloat = _String_toFloat;
-var $author$project$Main$SaveTicketResult = function (a) {
-	return {$: 'SaveTicketResult', a: a};
+var $author$project$Main$CreateTicketResult = function (a) {
+	return {$: 'CreateTicketResult', a: a};
 };
 var $elm$json$Json$Encode$float = _Json_wrap;
 var $elm$json$Json$Encode$object = function (pairs) {
@@ -6284,6 +6271,42 @@ var $elm$http$Http$jsonBody = function (value) {
 		_Http_pair,
 		'application/json',
 		A2($elm$json$Json$Encode$encode, 0, value));
+};
+var $author$project$Main$createTicket = function (ticket) {
+	return $elm$http$Http$request(
+		{
+			body: $elm$http$Http$jsonBody(
+				$author$project$Main$encodeTicket(ticket)),
+			expect: $elm$http$Http$expectString($author$project$Main$CreateTicketResult),
+			headers: _List_Nil,
+			method: 'POST',
+			timeout: $elm$core$Maybe$Nothing,
+			tracker: $elm$core$Maybe$Nothing,
+			url: '/api/tickets'
+		});
+};
+var $author$project$Main$debugErr = function (err) {
+	switch (err.$) {
+		case 'BadUrl':
+			var url = err.a;
+			return 'Bad URL: ' + url;
+		case 'Timeout':
+			return 'Request timed out';
+		case 'NetworkError':
+			return 'Network error';
+		case 'BadStatus':
+			var status = err.a;
+			return 'Bad status: ' + $elm$core$String$fromInt(status);
+		default:
+			var body = err.a;
+			return 'Bad body: ' + body;
+	}
+};
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$core$String$toFloat = _String_toFloat;
+var $author$project$Main$SaveTicketResult = function (a) {
+	return {$: 'SaveTicketResult', a: a};
 };
 var $author$project$Main$updateTicket = function (ticket) {
 	return $elm$http$Http$request(
@@ -6448,7 +6471,7 @@ var $author$project$Main$update = F2(
 				} else {
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 				}
-			default:
+			case 'SaveTicketResult':
 				if (msg.a.$ === 'Ok') {
 					return _Utils_Tuple2(
 						_Utils_update(
@@ -6469,6 +6492,133 @@ var $author$project$Main$update = F2(
 							}),
 						$elm$core$Platform$Cmd$none);
 				}
+			case 'StartCreating':
+				var newTicket = model.newTicket;
+				var currentDate = '2025-04-29 08:00:00';
+				var updatedNewTicket = _Utils_update(
+					newTicket,
+					{lastUpdate: currentDate});
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{creatingTicket: true, error: $elm$core$Maybe$Nothing, newTicket: updatedNewTicket, success: $elm$core$Maybe$Nothing}),
+					$elm$core$Platform$Cmd$none);
+			case 'CancelCreating':
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{creatingTicket: false}),
+					$elm$core$Platform$Cmd$none);
+			case 'UpdateNewTicketField':
+				var field = msg.a;
+				var value = msg.b;
+				var ticket = model.newTicket;
+				var updatedTicket = function () {
+					switch (field) {
+						case 'ticketName':
+							return _Utils_update(
+								ticket,
+								{ticketName: value});
+						case 'estado':
+							return _Utils_update(
+								ticket,
+								{estado: value});
+						case 'lastUpdate':
+							return _Utils_update(
+								ticket,
+								{lastUpdate: value});
+						default:
+							return ticket;
+					}
+				}();
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{newTicket: updatedTicket}),
+					$elm$core$Platform$Cmd$none);
+			case 'UpdateNewTicketFloatField':
+				var field = msg.a;
+				var value = msg.b;
+				var ticket = model.newTicket;
+				var floatValue = A2(
+					$elm$core$Maybe$withDefault,
+					0.0,
+					$elm$core$String$toFloat(value));
+				var updatedTicket = function () {
+					switch (field) {
+						case 'compra1':
+							return _Utils_update(
+								ticket,
+								{compra1: floatValue});
+						case 'compra2':
+							return _Utils_update(
+								ticket,
+								{compra2: floatValue});
+						case 'venta1':
+							return _Utils_update(
+								ticket,
+								{venta1: floatValue});
+						case 'venta2':
+							return _Utils_update(
+								ticket,
+								{venta2: floatValue});
+						case 'takeProfit':
+							return _Utils_update(
+								ticket,
+								{takeProfit: floatValue});
+						case 'stopLoss':
+							return _Utils_update(
+								ticket,
+								{stopLoss: floatValue});
+						case 'puntaCompra':
+							return _Utils_update(
+								ticket,
+								{puntaCompra: floatValue});
+						case 'puntaVenta':
+							return _Utils_update(
+								ticket,
+								{puntaVenta: floatValue});
+						default:
+							return ticket;
+					}
+				}();
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{newTicket: updatedTicket}),
+					$elm$core$Platform$Cmd$none);
+			case 'CreateTicket':
+				return $elm$core$String$isEmpty(model.newTicket.ticketName) ? _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							error: $elm$core$Maybe$Just('El nombre del ticket no puede estar vacío')
+						}),
+					$elm$core$Platform$Cmd$none) : _Utils_Tuple2(
+					model,
+					$author$project$Main$createTicket(model.newTicket));
+			default:
+				if (msg.a.$ === 'Ok') {
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								creatingTicket: false,
+								newTicket: {compra1: 0.0, compra2: 0.0, estado: 'Nuevo', lastUpdate: '', puntaCompra: 0.0, puntaVenta: 0.0, stopLoss: 0.0, takeProfit: 0.0, ticketName: '', venta1: 0.0, venta2: 0.0},
+								success: $elm$core$Maybe$Just('Ticket creado correctamente')
+							}),
+						$author$project$Main$getTickets);
+				} else {
+					var err = msg.a.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								error: $elm$core$Maybe$Just(
+									'Error al crear ticket: ' + $author$project$Main$debugErr(err))
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
 		}
 	});
 var $elm$html$Html$div = _VirtualDom_node('div');
@@ -6477,21 +6627,8 @@ var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $author$project$Main$CancelEditing = {$: 'CancelEditing'};
-var $author$project$Main$SaveTicket = {$: 'SaveTicket'};
-var $author$project$Main$UpdateField = F2(
-	function (a, b) {
-		return {$: 'UpdateField', a: a, b: b};
-	});
-var $author$project$Main$UpdateFloatField = F2(
-	function (a, b) {
-		return {$: 'UpdateFloatField', a: a, b: b};
-	});
+var $author$project$Main$StartCreating = {$: 'StartCreating'};
 var $elm$html$Html$button = _VirtualDom_node('button');
-var $elm$core$String$fromFloat = _String_fromNumber;
-var $elm$html$Html$h3 = _VirtualDom_node('h3');
-var $elm$html$Html$input = _VirtualDom_node('input');
-var $elm$html$Html$label = _VirtualDom_node('label');
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -6509,6 +6646,20 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
+var $author$project$Main$CancelCreating = {$: 'CancelCreating'};
+var $author$project$Main$CreateTicket = {$: 'CreateTicket'};
+var $author$project$Main$UpdateNewTicketField = F2(
+	function (a, b) {
+		return {$: 'UpdateNewTicketField', a: a, b: b};
+	});
+var $author$project$Main$UpdateNewTicketFloatField = F2(
+	function (a, b) {
+		return {$: 'UpdateNewTicketFloatField', a: a, b: b};
+	});
+var $elm$core$String$fromFloat = _String_fromNumber;
+var $elm$html$Html$h3 = _VirtualDom_node('h3');
+var $elm$html$Html$input = _VirtualDom_node('input');
+var $elm$html$Html$label = _VirtualDom_node('label');
 var $elm$html$Html$Events$alwaysStop = function (x) {
 	return _Utils_Tuple2(x, true);
 };
@@ -6549,6 +6700,461 @@ var $elm$html$Html$Attributes$stringProperty = F2(
 	});
 var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $author$project$Main$viewCreateForm = function (ticket) {
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'border', '1px solid #ddd'),
+				A2($elm$html$Html$Attributes$style, 'padding', '20px'),
+				A2($elm$html$Html$Attributes$style, 'border-radius', '5px')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$h3,
+				_List_Nil,
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Crear Nuevo Ticket')
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'display', 'block'),
+								A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Nombre del Ticket:')
+							])),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$type_('text'),
+								$elm$html$Html$Attributes$value(ticket.ticketName),
+								$elm$html$Html$Events$onInput(
+								$author$project$Main$UpdateNewTicketField('ticketName')),
+								A2($elm$html$Html$Attributes$style, 'width', '100%'),
+								A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+								A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+							]),
+						_List_Nil)
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'display', 'block'),
+								A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Estado:')
+							])),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$type_('text'),
+								$elm$html$Html$Attributes$value(ticket.estado),
+								$elm$html$Html$Events$onInput(
+								$author$project$Main$UpdateNewTicketField('estado')),
+								A2($elm$html$Html$Attributes$style, 'width', '100%'),
+								A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+								A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+							]),
+						_List_Nil)
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '15px'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Compra 1:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.compra1)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateNewTicketFloatField('compra1')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Compra 2:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.compra2)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateNewTicketFloatField('compra2')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '15px'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Venta 1:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.venta1)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateNewTicketFloatField('venta1')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Venta 2:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.venta2)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateNewTicketFloatField('venta2')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '15px'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Take Profit:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.takeProfit)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateNewTicketFloatField('takeProfit')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Stop Loss:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.stopLoss)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateNewTicketFloatField('stopLoss')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '15px'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '15px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Punta Compra:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.puntaCompra)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateNewTicketFloatField('puntaCompra')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'flex', '1')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$label,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'display', 'block'),
+										A2($elm$html$Html$Attributes$style, 'margin-bottom', '5px')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Punta Venta:')
+									])),
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$type_('number'),
+										$elm$html$Html$Attributes$value(
+										$elm$core$String$fromFloat(ticket.puntaVenta)),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$UpdateNewTicketFloatField('puntaVenta')),
+										A2($elm$html$Html$Attributes$style, 'width', '100%'),
+										A2($elm$html$Html$Attributes$style, 'padding', '8px'),
+										A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box')
+									]),
+								_List_Nil)
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'gap', '10px'),
+						A2($elm$html$Html$Attributes$style, 'margin-top', '20px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Events$onClick($author$project$Main$CreateTicket),
+								A2($elm$html$Html$Attributes$style, 'background-color', '#4CAF50'),
+								A2($elm$html$Html$Attributes$style, 'color', 'white'),
+								A2($elm$html$Html$Attributes$style, 'padding', '10px 15px'),
+								A2($elm$html$Html$Attributes$style, 'border', 'none'),
+								A2($elm$html$Html$Attributes$style, 'border-radius', '4px'),
+								A2($elm$html$Html$Attributes$style, 'cursor', 'pointer')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Crear Ticket')
+							])),
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Events$onClick($author$project$Main$CancelCreating),
+								A2($elm$html$Html$Attributes$style, 'background-color', '#f44336'),
+								A2($elm$html$Html$Attributes$style, 'color', 'white'),
+								A2($elm$html$Html$Attributes$style, 'padding', '10px 15px'),
+								A2($elm$html$Html$Attributes$style, 'border', 'none'),
+								A2($elm$html$Html$Attributes$style, 'border-radius', '4px'),
+								A2($elm$html$Html$Attributes$style, 'cursor', 'pointer')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Cancelar')
+							]))
+					]))
+			]));
+};
+var $author$project$Main$CancelEditing = {$: 'CancelEditing'};
+var $author$project$Main$SaveTicket = {$: 'SaveTicket'};
+var $author$project$Main$UpdateField = F2(
+	function (a, b) {
+		return {$: 'UpdateField', a: a, b: b};
+	});
+var $author$project$Main$UpdateFloatField = F2(
+	function (a, b) {
+		return {$: 'UpdateFloatField', a: a, b: b};
+	});
 var $author$project$Main$viewEditForm = function (ticket) {
 	return A2(
 		$elm$html$Html$div,
@@ -7165,12 +7771,47 @@ var $author$project$Main$viewTicketsTable = function (model) {
 			A2($elm$core$List$map, $author$project$Main$viewRow, model.tickets)));
 };
 var $author$project$Main$viewContent = function (model) {
-	var _v0 = model.editingTicket;
-	if (_v0.$ === 'Just') {
-		var ticket = _v0.a;
+	var _v0 = _Utils_Tuple2(model.editingTicket, model.creatingTicket);
+	if (_v0.a.$ === 'Just') {
+		var ticket = _v0.a.a;
 		return $author$project$Main$viewEditForm(ticket);
 	} else {
-		return $author$project$Main$viewTicketsTable(model);
+		if (_v0.b) {
+			return $author$project$Main$viewCreateForm(model.newTicket);
+		} else {
+			return A2(
+				$elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'margin-bottom', '1rem')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$button,
+								_List_fromArray(
+									[
+										$elm$html$Html$Events$onClick($author$project$Main$StartCreating),
+										A2($elm$html$Html$Attributes$style, 'background-color', '#4CAF50'),
+										A2($elm$html$Html$Attributes$style, 'color', 'white'),
+										A2($elm$html$Html$Attributes$style, 'padding', '10px 15px'),
+										A2($elm$html$Html$Attributes$style, 'border', 'none'),
+										A2($elm$html$Html$Attributes$style, 'border-radius', '4px'),
+										A2($elm$html$Html$Attributes$style, 'cursor', 'pointer')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Crear Nuevo Ticket')
+									]))
+							])),
+						$author$project$Main$viewTicketsTable(model)
+					]));
+		}
 	}
 };
 var $author$project$Main$viewMessages = function (model) {

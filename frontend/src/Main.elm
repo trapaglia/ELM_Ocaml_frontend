@@ -93,6 +93,8 @@ type alias Model =
     , error : Maybe String
     , success : Maybe String
     , editingTicket : Maybe Ticket
+    , creatingTicket : Bool
+    , newTicket : Ticket
     }
 
 
@@ -102,6 +104,20 @@ init _ =
       , error = Nothing
       , success = Nothing 
       , editingTicket = Nothing
+      , creatingTicket = False
+      , newTicket = 
+            { ticketName = ""
+            , estado = "Nuevo"
+            , compra1 = 0.0
+            , compra2 = 0.0
+            , venta1 = 0.0
+            , venta2 = 0.0
+            , takeProfit = 0.0
+            , stopLoss = 0.0
+            , puntaCompra = 0.0
+            , puntaVenta = 0.0
+            , lastUpdate = ""
+            }
       }
     , getTickets
     )
@@ -119,6 +135,12 @@ type Msg
     | UpdateFloatField String String
     | SaveTicket
     | SaveTicketResult (Result Http.Error String)
+    | StartCreating
+    | CancelCreating
+    | UpdateNewTicketField String String
+    | UpdateNewTicketFloatField String String
+    | CreateTicket
+    | CreateTicketResult (Result Http.Error String)
 
 
 
@@ -219,7 +241,115 @@ update msg model =
 
         SaveTicketResult (Err err) ->
             ( { model | error = Just ("Error al guardar: " ++ debugErr err) }, Cmd.none )
+            
+        StartCreating ->
+            let
+                currentDate = 
+                    -- Formato simple de fecha para el ejemplo
+                    "2025-04-29 08:00:00"
+                
+                newTicket = model.newTicket
+                updatedNewTicket = { newTicket | lastUpdate = currentDate }
+            in
+            ( { model 
+                | creatingTicket = True
+                , error = Nothing
+                , success = Nothing
+                , newTicket = updatedNewTicket
+              }
+            , Cmd.none 
+            )
+            
+        CancelCreating ->
+            ( { model | creatingTicket = False }, Cmd.none )
+            
+        UpdateNewTicketField field value ->
+            let
+                ticket = model.newTicket
+                
+                updatedTicket =
+                    case field of
+                        "ticketName" ->
+                            { ticket | ticketName = value }
 
+                        "estado" ->
+                            { ticket | estado = value }
+
+                        "lastUpdate" ->
+                            { ticket | lastUpdate = value }
+
+                        _ ->
+                            ticket
+            in
+            ( { model | newTicket = updatedTicket }, Cmd.none )
+            
+        UpdateNewTicketFloatField field value ->
+            let
+                ticket = model.newTicket
+                
+                floatValue =
+                    String.toFloat value |> Maybe.withDefault 0.0
+
+                updatedTicket =
+                    case field of
+                        "compra1" ->
+                            { ticket | compra1 = floatValue }
+
+                        "compra2" ->
+                            { ticket | compra2 = floatValue }
+
+                        "venta1" ->
+                            { ticket | venta1 = floatValue }
+
+                        "venta2" ->
+                            { ticket | venta2 = floatValue }
+
+                        "takeProfit" ->
+                            { ticket | takeProfit = floatValue }
+
+                        "stopLoss" ->
+                            { ticket | stopLoss = floatValue }
+
+                        "puntaCompra" ->
+                            { ticket | puntaCompra = floatValue }
+
+                        "puntaVenta" ->
+                            { ticket | puntaVenta = floatValue }
+
+                        _ ->
+                            ticket
+            in
+            ( { model | newTicket = updatedTicket }, Cmd.none )
+            
+        CreateTicket ->
+            if String.isEmpty model.newTicket.ticketName then
+                ( { model | error = Just "El nombre del ticket no puede estar vacío" }, Cmd.none )
+            else
+                ( model, createTicket model.newTicket )
+                
+        CreateTicketResult (Ok _) ->
+            ( { model 
+                | creatingTicket = False
+                , success = Just "Ticket creado correctamente"
+                , newTicket = 
+                    { ticketName = ""
+                    , estado = "Nuevo"
+                    , compra1 = 0.0
+                    , compra2 = 0.0
+                    , venta1 = 0.0
+                    , venta2 = 0.0
+                    , takeProfit = 0.0
+                    , stopLoss = 0.0
+                    , puntaCompra = 0.0
+                    , puntaVenta = 0.0
+                    , lastUpdate = ""
+                    }
+              }
+            , getTickets
+            )
+            
+        CreateTicketResult (Err err) ->
+            ( { model | error = Just ("Error al crear ticket: " ++ debugErr err) }, Cmd.none )
 
 
 -- HTTP
@@ -241,6 +371,19 @@ updateTicket ticket =
         , url = "/api/tickets"
         , body = Http.jsonBody (encodeTicket ticket)
         , expect = Http.expectString SaveTicketResult
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+        
+        
+createTicket : Ticket -> Cmd Msg
+createTicket ticket =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = "/api/tickets"
+        , body = Http.jsonBody (encodeTicket ticket)
+        , expect = Http.expectString CreateTicketResult
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -300,12 +443,29 @@ viewMessages model =
 
 viewContent : Model -> Html Msg
 viewContent model =
-    case model.editingTicket of
-        Just ticket ->
+    case (model.editingTicket, model.creatingTicket) of
+        (Just ticket, _) ->
             viewEditForm ticket
-
-        Nothing ->
-            viewTicketsTable model
+            
+        (_, True) ->
+            viewCreateForm model.newTicket
+            
+        _ ->
+            div []
+                [ div [ style "margin-bottom" "1rem" ]
+                    [ button 
+                        [ onClick StartCreating
+                        , style "background-color" "#4CAF50"
+                        , style "color" "white"
+                        , style "padding" "10px 15px"
+                        , style "border" "none"
+                        , style "border-radius" "4px"
+                        , style "cursor" "pointer"
+                        ] 
+                        [ text "Crear Nuevo Ticket" ]
+                    ]
+                , viewTicketsTable model
+                ]
 
 
 viewTicketsTable : Model -> Html Msg
@@ -492,6 +652,162 @@ viewEditForm ticket =
             ]
         ]
 
+
+viewCreateForm : Ticket -> Html Msg
+viewCreateForm ticket =
+    div [ style "border" "1px solid #ddd", style "padding" "20px", style "border-radius" "5px" ]
+        [ h3 [] [ text "Crear Nuevo Ticket" ]
+        , div [ style "margin-bottom" "15px" ]
+            [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Nombre del Ticket:" ]
+            , input
+                [ type_ "text"
+                , value ticket.ticketName
+                , onInput (UpdateNewTicketField "ticketName")
+                , style "width" "100%"
+                , style "padding" "8px"
+                , style "box-sizing" "border-box"
+                ]
+                []
+            ]
+        , div [ style "margin-bottom" "15px" ]
+            [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Estado:" ]
+            , input
+                [ type_ "text"
+                , value ticket.estado
+                , onInput (UpdateNewTicketField "estado")
+                , style "width" "100%"
+                , style "padding" "8px"
+                , style "box-sizing" "border-box"
+                ]
+                []
+            ]
+        , div [ style "display" "flex", style "gap" "15px", style "margin-bottom" "15px" ]
+            [ div [ style "flex" "1" ]
+                [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Compra 1:" ]
+                , input
+                    [ type_ "number"
+                    , value (String.fromFloat ticket.compra1)
+                    , onInput (UpdateNewTicketFloatField "compra1")
+                    , style "width" "100%"
+                    , style "padding" "8px"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+                ]
+            , div [ style "flex" "1" ]
+                [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Compra 2:" ]
+                , input
+                    [ type_ "number"
+                    , value (String.fromFloat ticket.compra2)
+                    , onInput (UpdateNewTicketFloatField "compra2")
+                    , style "width" "100%"
+                    , style "padding" "8px"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+                ]
+            ]
+        , div [ style "display" "flex", style "gap" "15px", style "margin-bottom" "15px" ]
+            [ div [ style "flex" "1" ]
+                [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Venta 1:" ]
+                , input
+                    [ type_ "number"
+                    , value (String.fromFloat ticket.venta1)
+                    , onInput (UpdateNewTicketFloatField "venta1")
+                    , style "width" "100%"
+                    , style "padding" "8px"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+                ]
+            , div [ style "flex" "1" ]
+                [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Venta 2:" ]
+                , input
+                    [ type_ "number"
+                    , value (String.fromFloat ticket.venta2)
+                    , onInput (UpdateNewTicketFloatField "venta2")
+                    , style "width" "100%"
+                    , style "padding" "8px"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+                ]
+            ]
+        , div [ style "display" "flex", style "gap" "15px", style "margin-bottom" "15px" ]
+            [ div [ style "flex" "1" ]
+                [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Take Profit:" ]
+                , input
+                    [ type_ "number"
+                    , value (String.fromFloat ticket.takeProfit)
+                    , onInput (UpdateNewTicketFloatField "takeProfit")
+                    , style "width" "100%"
+                    , style "padding" "8px"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+                ]
+            , div [ style "flex" "1" ]
+                [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Stop Loss:" ]
+                , input
+                    [ type_ "number"
+                    , value (String.fromFloat ticket.stopLoss)
+                    , onInput (UpdateNewTicketFloatField "stopLoss")
+                    , style "width" "100%"
+                    , style "padding" "8px"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+                ]
+            ]
+        , div [ style "display" "flex", style "gap" "15px", style "margin-bottom" "15px" ]
+            [ div [ style "flex" "1" ]
+                [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Punta Compra:" ]
+                , input
+                    [ type_ "number"
+                    , value (String.fromFloat ticket.puntaCompra)
+                    , onInput (UpdateNewTicketFloatField "puntaCompra")
+                    , style "width" "100%"
+                    , style "padding" "8px"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+                ]
+            , div [ style "flex" "1" ]
+                [ label [ style "display" "block", style "margin-bottom" "5px" ] [ text "Punta Venta:" ]
+                , input
+                    [ type_ "number"
+                    , value (String.fromFloat ticket.puntaVenta)
+                    , onInput (UpdateNewTicketFloatField "puntaVenta")
+                    , style "width" "100%"
+                    , style "padding" "8px"
+                    , style "box-sizing" "border-box"
+                    ]
+                    []
+                ]
+            ]
+        , div [ style "display" "flex", style "gap" "10px", style "margin-top" "20px" ]
+            [ button
+                [ onClick CreateTicket
+                , style "background-color" "#4CAF50"
+                , style "color" "white"
+                , style "padding" "10px 15px"
+                , style "border" "none"
+                , style "border-radius" "4px"
+                , style "cursor" "pointer"
+                ]
+                [ text "Crear Ticket" ]
+            , button
+                [ onClick CancelCreating
+                , style "background-color" "#f44336"
+                , style "color" "white"
+                , style "padding" "10px 15px"
+                , style "border" "none"
+                , style "border-radius" "4px"
+                , style "cursor" "pointer"
+                ]
+                [ text "Cancelar" ]
+            ]
+        ]
 
 
 -- MAIN

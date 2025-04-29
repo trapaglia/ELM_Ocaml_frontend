@@ -119,6 +119,35 @@ let update_ticket ticket =
   | Sqlite3.Rc.DONE -> true
   | _ -> false
 
+(* Insertar un nuevo ticket en la base de datos *)
+let insert_ticket ticket =
+  let db = Sqlite3.db_open "iol.db" in
+  let sql =
+    "INSERT INTO tickets (ticket_name, estado, compra1, compra2, venta1, venta2, \
+     take_profit, stop_loss, punta_compra, punta_venta, last_update) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  in
+  
+  let stmt = Sqlite3.prepare db sql in
+  ignore (Sqlite3.bind stmt 1 (Sqlite3.Data.TEXT ticket.ticket_name));
+  ignore (Sqlite3.bind stmt 2 (Sqlite3.Data.TEXT ticket.estado));
+  ignore (Sqlite3.bind stmt 3 (Sqlite3.Data.FLOAT ticket.compra1));
+  ignore (Sqlite3.bind stmt 4 (Sqlite3.Data.FLOAT ticket.compra2));
+  ignore (Sqlite3.bind stmt 5 (Sqlite3.Data.FLOAT ticket.venta1));
+  ignore (Sqlite3.bind stmt 6 (Sqlite3.Data.FLOAT ticket.venta2));
+  ignore (Sqlite3.bind stmt 7 (Sqlite3.Data.FLOAT ticket.take_profit));
+  ignore (Sqlite3.bind stmt 8 (Sqlite3.Data.FLOAT ticket.stop_loss));
+  ignore (Sqlite3.bind stmt 9 (Sqlite3.Data.FLOAT ticket.punta_compra));
+  ignore (Sqlite3.bind stmt 10 (Sqlite3.Data.FLOAT ticket.punta_venta));
+  ignore (Sqlite3.bind stmt 11 (Sqlite3.Data.TEXT ticket.last_update));
+  
+  let result = Sqlite3.step stmt in
+  ignore (Sqlite3.finalize stmt);
+  ignore (Sqlite3.db_close db);
+  match result with
+  | Sqlite3.Rc.DONE -> true
+  | _ -> false
+
 (* Deserializar un ticket desde JSON, manejando tanto valores float como int *)
 let ticket_from_json json =
   try
@@ -193,6 +222,26 @@ let update_ticket_handler req =
     Dream.json ~status:`Bad_Request (Printf.sprintf "{\"status\": \"error\", \"message\": \"Error en el formato: %s\"}" 
                              (Printexc.to_string e))
 
+(* Handler para crear un nuevo ticket *)
+let create_ticket_handler req =
+  let open Lwt.Syntax in
+  let* body = Dream.body req in
+  Dream.log "Contenido del cuerpo recibido para crear ticket: %s" body;
+  try
+    let json = Yojson.Safe.from_string body in
+    Dream.log "JSON parseado correctamente";
+    let ticket = ticket_from_json json in
+    Dream.log "Ticket deserializado: %s" ticket.ticket_name;
+    let success = insert_ticket ticket in
+    if success then
+      Dream.json "{\"status\": \"success\", \"message\": \"Ticket creado correctamente\"}"
+    else
+      Dream.json ~status:`Internal_Server_Error "{\"status\": \"error\", \"message\": \"Error al crear el ticket\"}"
+  with e ->
+    Dream.log "Error al procesar la solicitud: %s" (Printexc.to_string e);
+    Dream.json ~status:`Bad_Request (Printf.sprintf "{\"status\": \"error\", \"message\": \"Error en el formato: %s\"}" 
+                             (Printexc.to_string e))
+
 (* Leer un archivo *)
 let read_file path =
   let ic = open_in path in
@@ -212,6 +261,7 @@ let () =
     (* API *)
     Dream.get "/api/tickets" tickets_handler;
     Dream.put "/api/tickets" update_ticket_handler;
+    Dream.post "/api/tickets" create_ticket_handler;
 
     (* Archivos estáticos del frontend *)
     Dream.get "/" (fun _ -> Dream.html (read_file "public/index.html"));
