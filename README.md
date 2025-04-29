@@ -62,7 +62,7 @@ opam init --auto-setup
 eval $(opam env)
 
 # Instalar OCaml 4.13.1 (o la versión que prefieras)
-opam switch create 4.13.1
+opam switch create 5.1.0 #4.13.1
 eval $(opam env)
 ```
 
@@ -92,6 +92,18 @@ cd backend
 opam install . --deps-only
 opam install dune dream yojson sqlite3
 
+# Configurar correctamente el proyecto Dune
+# Crear el archivo dune-project en el directorio backend:
+echo '(lang dune 2.9)
+(name db_frontend)
+(using sqlite3 0.1)' > dune-project
+
+# Crear el archivo dune en el directorio bin:
+mkdir -p bin
+echo '(executable
+ (name main)
+ (libraries dream yojson sqlite3))' > bin/dune
+
 # Volver al directorio principal
 cd ..
 ```
@@ -116,6 +128,37 @@ cd backend
 dune exec bin/main.exe
 
 # La aplicación estará disponible en http://localhost:8080
+```
+
+## Solución de Problemas Comunes
+
+### Error: "I cannot find the root of the current workspace/project"
+
+Si sigues viendo este error después de seguir los pasos anteriores:
+
+1. Asegúrate de estar en el directorio correcto (backend)
+2. Verifica que los archivos dune-project y bin/dune se hayan creado correctamente
+3. Si el problema persiste, intenta una solución alternativa:
+   ```bash
+   cd ..  # Volver al directorio raíz
+   dune init project ELM_Ocaml_frontend
+   cp -r backend/bin/* ELM_Ocaml_frontend/bin/
+   cp -r backend/public/* ELM_Ocaml_frontend/
+   cp backend/iol.db ELM_Ocaml_frontend/
+   cd ELM_Ocaml_frontend
+   dune exec bin/main.exe
+   ```
+
+### El servidor no inicia
+
+Verifica que el puerto 8080 no esté en uso:
+```bash
+sudo lsof -i :8080
+```
+
+Si hay algún proceso usando ese puerto, puedes terminarlo:
+```bash
+sudo kill -9 [PID]
 ```
 
 ## Uso de la Aplicación
@@ -152,34 +195,6 @@ La aplicación utiliza SQLite con una tabla principal `tickets` que contiene los
 - `GET /api/tickets`: Obtiene todos los tickets
 - `PUT /api/tickets`: Actualiza un ticket existente
 - `POST /api/tickets`: Crea un nuevo ticket
-
-## Solución de Problemas
-
-### El servidor no inicia
-
-Verifica que el puerto 8080 no esté en uso:
-```bash
-sudo lsof -i :8080
-```
-
-Si hay algún proceso usando ese puerto, puedes terminarlo:
-```bash
-sudo kill -9 [PID]
-```
-
-### Errores de compilación en Elm
-
-Si encuentras errores al compilar el frontend, verifica:
-1. Que todas las dependencias de Elm estén instaladas
-2. Que la sintaxis del código sea correcta
-3. Ejecuta `elm make src/Main.elm --debug` para obtener información detallada
-
-### Errores en el backend
-
-Si encuentras errores en el backend, verifica:
-1. Que todas las dependencias de OCaml estén instaladas
-2. Que la base de datos SQLite exista y tenga los permisos correctos
-3. Revisa los logs del servidor para identificar el problema específico
 
 ## Licencia
 
