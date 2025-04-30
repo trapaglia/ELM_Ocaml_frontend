@@ -130,6 +130,207 @@ dune exec bin/main.exe
 # La aplicación estará disponible en http://localhost:8080
 ```
 
+### Ejecutar el Servidor en una IP Pública
+
+Para hacer que la aplicación sea accesible desde Internet, necesitas configurar el servidor para que escuche en una IP pública en lugar de solo localhost:
+
+1. **Modificar el código del servidor**
+
+   Edita el archivo `backend/bin/main.ml` para cambiar la configuración de la interfaz:
+
+   ```bash
+   # Abrir el archivo para edición
+   nano backend/bin/main.ml
+   ```
+
+   Busca la sección donde se inicia el servidor Dream (cerca del final del archivo):
+
+   ```ocaml
+   let ()
+     Dream.run
+     ~interface:"0.0.0.0"  # Esto ya está configurado para escuchar en todas las interfaces
+     ~port:8080
+     (Dream.logger
+     @@ Dream.router [
+       (* API *)
+       ...
+     ])
+   ```
+
+   Si la interfaz ya está configurada como `"0.0.0.0"`, el servidor ya está listo para escuchar conexiones externas.
+
+2. **Configurar el Firewall**
+
+   Asegúrate de que el puerto 8080 esté abierto en el firewall:
+
+   ```bash
+   # Para sistemas con UFW (Ubuntu)
+   sudo ufw allow 8080/tcp
+   
+   # Para sistemas con firewalld (Fedora, CentOS)
+   sudo firewall-cmd --permanent --add-port=8080/tcp
+   sudo firewall-cmd --reload
+   ```
+
+3. **Obtener tu IP Pública**
+
+   ```bash
+   # Método 1: Usando curl
+   curl ifconfig.me
+   
+   # Método 2: Usando un servicio DNS
+   dig +short myip.opendns.com @resolver1.opendns.com
+   ```
+
+4. **Iniciar el Servidor**
+
+   ```bash
+   cd backend
+   dune exec bin/main.exe
+   ```
+
+5. **Acceder a la Aplicación**
+
+   Ahora puedes acceder a la aplicación desde cualquier dispositivo usando:
+   
+   ```
+   http://TU_IP_PUBLICA:8080
+   ```
+
+6. **Consideraciones de Seguridad**
+
+   - Esta configuración básica no incluye HTTPS, lo que significa que el tráfico no está cifrado
+   - Considera configurar un proxy inverso como Nginx con certificados SSL para producción
+   - Limita el acceso al servidor con reglas de firewall adecuadas
+
+7. **Verificación Exhaustiva de Accesibilidad Externa**
+
+   Si aún no puedes acceder a la aplicación desde el exterior, verifica estos puntos:
+
+   a. **Confirmar que el servidor está escuchando en todas las interfaces**:
+   ```bash
+   # Mientras el servidor está en ejecución, verifica los puertos abiertos
+   sudo netstat -tulpn | grep 8080
+   # Deberías ver algo como: tcp 0 0 0.0.0.0:8080 0.0.0.0:* LISTEN
+   ```
+
+   b. **Verificar si hay un firewall en la nube** (si estás usando un VPS):
+   - AWS: Verifica los grupos de seguridad
+   - DigitalOcean/Linode: Verifica los firewalls de la nube
+   - Google Cloud: Verifica las reglas de firewall
+
+   c. **Probar la conectividad localmente primero**:
+   ```bash
+   # Desde el servidor
+   curl http://localhost:8080
+   # Luego prueba con la IP interna
+   curl http://IP_INTERNA:8080
+   ```
+
+   d. **Verificar si hay un NAT o router** entre tu servidor e Internet:
+   - Configura el reenvío de puertos en tu router (puerto 8080 → IP interna:8080)
+   - Contacta a tu ISP para verificar si bloquean el puerto 8080
+
+   e. **Probar con un puerto diferente** (algunos ISP bloquean puertos comunes):
+   ```ocaml
+   # En backend/bin/main.ml, cambia:
+   ~port:8080
+   # Por un puerto menos común, como:
+   ~port:9876
+   ```
+   Luego recompila y reinicia el servidor.
+
+8. **Uso de un Proxy Inverso (Recomendado)**
+
+   Un proxy inverso como Nginx o Apache puede resolver muchos problemas de accesibilidad y añadir funcionalidades importantes:
+
+   a. **Instalar Nginx**:
+   ```bash
+   sudo apt update
+   sudo apt install nginx
+   ```
+
+   b. **Configurar Nginx como proxy inverso**:
+   ```bash
+   sudo nano /etc/nginx/sites-available/elm-tickets
+   ```
+
+   Añade esta configuración:
+   ```
+   server {
+       listen 80;
+       server_name tu-dominio.com;  # O tu IP pública
+
+       location / {
+           proxy_pass http://localhost:8080;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+       }
+   }
+   ```
+
+   c. **Activar la configuración**:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/elm-tickets /etc/nginx/sites-enabled/
+   sudo nginx -t  # Verificar la configuración
+   sudo systemctl restart nginx
+   ```
+
+   d. **Abrir el puerto 80 en el firewall**:
+   ```bash
+   sudo ufw allow 80/tcp
+   ```
+
+   Ahora podrás acceder a tu aplicación a través del puerto 80 (HTTP estándar):
+   ```
+   http://TU_IP_PUBLICA
+   ```
+
+9. **Añadir HTTPS con Certbot (Opcional pero recomendado)**
+
+   ```bash
+   sudo apt install certbot python3-certbot-nginx
+   sudo certbot --nginx -d tu-dominio.com
+   ```
+
+   Sigue las instrucciones para configurar HTTPS automáticamente.
+
+10. **Configuración para Entorno de Producción**
+
+   Para un entorno de producción, se recomienda:
+   
+   - Configurar un servicio systemd para mantener el servidor en ejecución
+   - Usar un proxy inverso (Nginx/Apache) para gestionar SSL y caché
+   - Configurar un nombre de dominio en lugar de usar la IP directamente
+
+   Ejemplo de configuración de servicio systemd (`/etc/systemd/system/elm-tickets.service`):
+
+   ```
+   [Unit]
+   Description=Elm Tickets Application
+   After=network.target
+
+   [Service]
+   User=your_username
+   WorkingDirectory=/ruta/a/ELM_frontend/backend
+   ExecStart=/usr/bin/dune exec bin/main.exe
+   Restart=always
+   RestartSec=10
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Activar el servicio:
+   
+   ```bash
+   sudo systemctl enable elm-tickets
+   sudo systemctl start elm-tickets
+   ```
+
 ## Solución de Problemas Comunes
 
 ### Error: "I cannot find the root of the current workspace/project"
