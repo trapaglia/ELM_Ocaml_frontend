@@ -95,8 +95,7 @@ opam install dune dream yojson sqlite3
 # Configurar correctamente el proyecto Dune
 # Crear el archivo dune-project en el directorio backend:
 echo '(lang dune 2.9)
-(name db_frontend)
-(using sqlite3 0.1)' > dune-project
+(name db_frontend)' > dune-project
 
 # Crear el archivo dune en el directorio bin:
 mkdir -p bin
